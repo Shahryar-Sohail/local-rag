@@ -1,0 +1,20 @@
+# Python Virtual Environment (Don't upload the library files)
+venv/
+ENV/
+env/
+
+# PyCharm Settings (Specific to your laptop)
+.idea/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local Vector Database
+chroma_db/
+
+# Data & Models
+*.pdf
+*.docx
+*.csv
