@@ -8,3 +8,6 @@ streamlit
 python-dotenv
 pandas
 langchain-core
+sentence-transformers
+faiss-cpu
+numpy
