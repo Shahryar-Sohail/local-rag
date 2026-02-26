@@ -40,7 +40,7 @@ def process_all_pdf(pdf_directory):
     print(f"\n Total Documents Loaded: {len(all_documents)}")
     return all_documents
 
-all_pdf_documents = process_all_pdf("./pdf")
+# all_pdf_documents = process_all_pdf("./pdf")
 
 
 def split_documents(documents,chunk_size=1000,chunk_overlap=200):
@@ -62,7 +62,7 @@ def split_documents(documents,chunk_size=1000,chunk_overlap=200):
 
 
 
-chunks = split_documents(all_pdf_documents)
+# chunks = split_documents(all_pdf_documents)
 
 class EmbeddingManager:
     def __init__(self,model_name: str="mxbai-embed-large"):
@@ -168,12 +168,84 @@ vectorstore = VectorStore()
 
 
 #Text to Embeddings
-texts = [doc.page_content for doc in chunks]
+# texts = [doc.page_content for doc in chunks]
 # print(texts)
 
-
 #Generate Embeddings
-embeddings = embedding_manager.generate_embedding(texts)
+# embeddings = embedding_manager.generate_embedding(texts)
 
 #Store in Vector Data Base
-vectorstore.add_documents(chunks, embeddings)
+# vectorstore.add_documents(chunks, embeddings)
+
+if vectorstore.collection.count() == 0:
+    print("🚀 Database is empty. Starting Ingestion Pipeline...")
+
+    # Run the PDF processing functions ONLY if the database is empty
+    all_pdf_documents = process_all_pdf("./pdf")
+    chunks = split_documents(all_pdf_documents)
+
+    # Generate and Store Embeddings
+    texts = [doc.page_content for doc in chunks]
+    embeddings = embedding_manager.generate_embedding(texts)
+    vectorstore.add_documents(chunks, embeddings)
+else:
+    # If count > 0, we skip all the PDF and Embedding work!
+    print(f"✅ Database already has {vectorstore.collection.count()} chunks. Ready for Querying.")
+
+#Retriever Pipeline from Vector Store
+class RAGRetriever:
+    def __init__(self, vector_store: VectorStore, embedding_manager: EmbeddingManager):
+        self.vector_store = vector_store
+        self.embedding_manager = embedding_manager
+
+    def retrieve(self,query: str, top_k : int = 5, score_threshold: float = 0.0) -> List[Dict[str,Any]]:
+        print(f"Retrieving documents for query: {query}")
+        print(f"Top k: {top_k} threshold: {score_threshold}")
+
+        #generate query embedding
+        query_embedding = self.embedding_manager.generate_embedding([query])[0]
+
+        #search in vector store
+        try:
+            results = self.vector_store.collection.query(
+                query_embeddings = [query_embedding.tolist()],
+                n_results=top_k,
+            )
+            retrieved_docs = []
+
+            if results['documents'] and results['documents'][0]:
+                documents = results['documents'][0]
+                metadatas = results['metadatas'][0]
+                distances = results['distances'][0]
+                ids = results['ids'][0]
+
+                for i, (doc_id, document, metadata, distance) in enumerate(zip(ids, documents, metadatas, distances)):
+                    #convert distance to similarity score
+                    similarity_score = 1 - distance
+
+                    if similarity_score > score_threshold:
+                        retrieved_docs.append({
+                            'id': doc_id,
+                            'content': document,
+                            'metadata': metadata,
+                            'similarity_score': similarity_score,
+                            'distance': distance,
+                            'rank': i+1,
+                        })
+                        print(f"Retrieved Document {len(retrieved_docs)} after filtering")
+                    else:
+                        print(f"No Document Found")
+
+                    return retrieved_docs
+        except Exception as e:
+            print(f"Error retrieving documents for query: {e}")
+            return []
+rag_retriever = RAGRetriever(vectorstore, embedding_manager)
+# print(rag_retriever)
+# Call the retriever and store the result
+results = rag_retriever.retrieve("Riding Without Helmet")
+print(results)
+
+
+
+
