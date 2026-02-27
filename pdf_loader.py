@@ -9,6 +9,7 @@ from typing import List, Dict, Any,Tuple
 from pathlib import Path
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_ollama import ChatOllama
 from sklearn.metrics.pairwise import cosine_similarity
 from torch.nn.functional import embedding
 
@@ -243,8 +244,33 @@ class RAGRetriever:
 rag_retriever = RAGRetriever(vectorstore, embedding_manager)
 # print(rag_retriever)
 # Call the retriever and store the result
-results = rag_retriever.retrieve("Riding Without Helmet")
-print(results)
+# results = rag_retriever.retrieve("Riding Without Helmet")
+# print(results)
+
+
+# Context Pipeline integrate with LLM
+llm = ChatOllama(model="llama3.2:1b", temperature=0.1)
+
+
+#retrieve context and generate response
+def rag_simple(query,retriever,llm,top_k=3):
+    results = retriever.retrieve(query,top_k=top_k)
+    context = "\n\n".join([doc['content'] for doc in results]) if results else ""
+    if not context:
+        return "No Relevent Context Found"
+
+    prompt = f"""Use the following context to answer the question.
+    Context: {context}
+    Question: {query}
+    Answer: """
+
+    response = llm.invoke([prompt.format(context=context,query=query)])
+    return response.content
+answer = rag_simple("Riding Without Helmet",rag_retriever,llm)
+print(answer)
+    
+    
+
 
 
 
