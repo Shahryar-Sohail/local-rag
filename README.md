@@ -1,4 +1,4 @@
-# 🤖 Local RAG Assistant: AI PC Recommender 🚀
+# 🤖 Local RAG Assistant
 
 This is an **Advanced Retrieval-Augmented Generation (RAG)** system built locally to chat with private documents. This version is optimized to run 100% locally on your machine using **Ollama**, saving costs and ensuring data privacy.
 
